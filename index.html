@@ -1,13 +1,654 @@
 <!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>CETT - Tariq's Endgame OS + AI</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NightOwl OS | نظام إدارة الحياة</title>
+    <style>
+        :root {
+            --bg-dark: #0f0f13;
+            --bg-card: #1e1e24;
+            --bg-hover: #2a2a35;
+            --primary: #7c4dff; /* بنفسجي للإبداع والدراسة */
+            --accent: #00e676; /* أخضر للإنجاز */
+            --danger: #ff5252; /* أحمر للصحة والخصم */
+            --gold: #ffab00; /* ذهبي للمكافآت */
+            --text-main: #ffffff;
+            --text-muted: #a0a0a0;
+            --font-main: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            --radius: 16px;
+            --shadow: 0 10px 30px -10px rgba(0,0,0,0.5);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: var(--font-main); outline: none; }
+        
+        body { background-color: var(--bg-dark); color: var(--text-main); padding-bottom: 80px; }
+        
+        /* --- Grid Layout --- */
+       .app-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+        }
+
+        @media (min-width: 768px) {
+           .app-container { grid-template-columns: 300px 1fr; }
+           .sidebar { position: sticky; top: 20px; height: fit-content; }
+        }
+
+        /* --- Components --- */
+       .card {
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            padding: 20px;
+            box-shadow: var(--shadow);
+            border: 1px solid rgba(255,255,255,0.05);
+            transition: transform 0.2s;
+        }
+        
+       .card h2 { font-size: 1.2rem; margin-bottom: 15px; border-bottom: 2px solid var(--bg-hover); padding-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+
+       .btn {
+            background: var(--bg-hover);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: 0.2s;
+            font-weight: bold;
+        }
+       .btn:hover { background: var(--primary); }
+       .btn-primary { background: var(--primary); }
+       .btn-danger { background: rgba(255, 82, 82, 0.1); color: var(--danger); }
+       .btn-sm { padding: 5px 10px; font-size: 0.8rem; }
+
+        /* --- HUD (Level & Stats) --- */
+       .hud-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
+       .stat-box { background: rgba(0,0,0,0.3); padding: 10px; border-radius: 10px; text-align: center; }
+       .stat-val { font-size: 1.5rem; font-weight: 800; display: block; }
+       .stat-label { font-size: 0.8rem; color: var(--text-muted); }
+        
+       .xp-bar-container { width: 100%; height: 8px; background: #333; border-radius: 4px; overflow: hidden; margin-top: 10px; }
+       .xp-bar-fill { height: 100%; background: linear-gradient(90deg, var(--primary), #b388ff); width: 0%; transition: width 0.5s ease; }
+
+        /* --- Tabs Navigation --- */
+       .nav-tabs { display: flex; gap: 10px; margin-bottom: 20px; overflow-x: auto; padding-bottom: 5px; }
+       .nav-btn { flex: 1; white-space: nowrap; background: transparent; border: 1px solid var(--bg-hover); }
+       .nav-btn.active { background: var(--primary); border-color: var(--primary); }
+
+        /* --- Study Tracker --- */
+       .subject-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; }
+       .chapter-circles { display: flex; gap: 5px; margin-top: 10px; flex-wrap: wrap; }
+       .chapter-dot { 
+            width: 25px; height: 25px; border-radius: 50%; border: 2px solid var(--bg-hover); 
+            cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.7rem;
+            transition: 0.2s;
+        }
+       .chapter-dot.done { background: var(--accent); border-color: var(--accent); color: black; font-weight: bold; }
+       .chapter-dot:hover { border-color: var(--primary); }
+
+        /* --- Content Kanban --- */
+       .kanban-board { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
+       .kanban-col { background: rgba(0,0,0,0.2); padding: 10px; border-radius: 12px; min-height: 200px; }
+       .kanban-header { font-size: 0.9rem; color: var(--text-muted); margin-bottom: 10px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
+       .content-card { background: var(--bg-card); padding: 10px; margin-bottom: 10px; border-radius: 8px; border-left: 3px solid var(--gold); cursor: grab; font-size: 0.9rem; position: relative; }
+       .content-card:active { cursor: grabbing; }
+       .content-card.delete-btn { position: absolute; top: 5px; left: 5px; opacity: 0; cursor: pointer; color: var(--danger); }
+       .content-card:hover.delete-btn { opacity: 1; }
+
+        /* --- Habits & Rituals --- */
+       .habit-row { display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid var(--bg-hover); }
+       .habit-row:last-child { border-bottom: none; }
+       .checkbox-custom { width: 24px; height: 24px; border: 2px solid var(--primary); border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+       .checkbox-custom.checked { background: var(--primary); }
+       .checkbox-custom.checked::after { content: '✓'; color: white; }
+
+        /* --- Notifications --- */
+        #notification-area { position: fixed; bottom: 20px; left: 20px; z-index: 1000; display: flex; flex-direction: column; gap: 10px; }
+       .toast { background: var(--bg-card); padding: 15px 20px; border-radius: 8px; border-right: 4px solid var(--primary); animation: slideIn 0.3s; display: flex; align-items: center; gap: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.5); min-width: 250px; }
+        @keyframes slideIn { from { transform: translateX(-100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+        /* --- Modals --- */
+       .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: none; justify-content: center; align-items: center; z-index: 2000; }
+       .modal.active { display: flex; }
+       .modal-content { background: var(--bg-card); padding: 30px; border-radius: var(--radius); width: 90%; max-width: 500px; }
+        input, select { width: 100%; padding: 10px; background: var(--bg-dark); border: 1px solid var(--bg-hover); color: white; border-radius: 6px; margin: 10px 0; }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    
+    <div class="sidebar">
+        <div class="card">
+            <div style="text-align: center; margin-bottom: 20px;">
+                <h1 style="font-size: 1.5rem; color: var(--primary);">NightOwl OS</h1>
+                <p style="font-size: 0.8rem; color: var(--text-muted);">بروتوكول التفوق | 30 يوم</p>
+            </div>
+            
+            <div class="hud-grid">
+                <div class="stat-box">
+                    <span class="stat-label">المستوى</span>
+                    <span class="stat-val" id="level-val">1</span>
+                </div>
+                <div class="stat-box">
+                    <span class="stat-label">HP ❤️</span>
+                    <span class="stat-val" style="color:var(--danger)" id="hp-val">100</span>
+                </div>
+                <div class="stat-box">
+                    <span class="stat-label">عملات 🪙</span>
+                    <span class="stat-val" style="color:var(--gold)" id="gold-val">0</span>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 20px;">
+                <div style="display: flex; justify-content: space-between; font-size: 0.8rem;">
+                    <span>الخبرة (XP)</span>
+                    <span id="xp-text">0 / 100</span>
+                </div>
+                <div class="xp-bar-container">
+                    <div class="xp-bar-fill" id="xp-bar"></div>
+                </div>
+            </div>
+
+            <button class="btn btn-primary" style="width: 100%; margin-bottom: 10px;" onclick="Timer.toggle()">
+                ⏱️ المؤقت: <span id="timer-display">25:00</span>
+            </button>
+            <div style="text-align: center; font-size: 0.8rem; color: var(--text-muted);">
+                جلسة تركيز (Deep Work)
+            </div>
+        </div>
+
+        <div class="card" style="margin-top: 20px;">
+            <h2>روتين اليوم 📅</h2>
+            <div id="daily-habits-list">
+                </div>
+            <button class="btn btn-sm btn-danger" style="width: 100%; margin-top: 15px;" onclick="Game.resetDay()">بدء يوم جديد (Reset)</button>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="nav-tabs">
+            <button class="btn nav-btn active" onclick="UI.switchTab('study')">📚 الدراسة (7 مواد)</button>
+            <button class="btn nav-btn" onclick="UI.switchTab('content')">🎥 المحتوى (Kanban)</button>
+            <button class="btn nav-btn" onclick="UI.switchTab('planner')">🗓️ التخطيط</button>
+        </div>
+
+        <div id="tab-study" class="tab-pane">
+            <div class="card" style="margin-bottom: 20px;">
+                <div style="display:flex; justify-content:space-between;">
+                    <h2>غرفة العمليات الأكاديمية</h2>
+                    <button class="btn btn-sm" onclick="Study.addSubjectPrompt()">+ مادة جديدة</button>
+                </div>
+                <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 15px;">
+                    تقدمك في الـ 7 مواد. كل نقطة تمثل فصلاً أو TD. الهدف: إغلاق جميع الدوائر قبل الامتحان.
+                </p>
+                <div class="subject-grid" id="subjects-container">
+                    </div>
+            </div>
+        </div>
+
+        <div id="tab-content" class="tab-pane" style="display:none;">
+            <div class="card">
+                <div style="display:flex; justify-content:space-between;">
+                    <h2>خط إنتاج المحتوى</h2>
+                    <button class="btn btn-sm btn-primary" onclick="Content.addIdeaPrompt()">+ فكرة جديدة</button>
+                </div>
+                <div style="display: flex; gap: 10px; margin: 15px 0;">
+                    <span style="font-size:0.8rem; background:rgba(0,0,0,0.3); padding:5px 10px; border-radius:4px;">🎯 هدف الأسبوع: 3 Reels</span>
+                    <span style="font-size:0.8rem; background:rgba(0,0,0,0.3); padding:5px 10px; border-radius:4px;">🎯 هدف الأسبوع: 1 فيديو طويل</span>
+                </div>
+                <div class="kanban-board">
+                    <div class="kanban-col" id="col-idea">
+                        <div class="kanban-header">💡 أفكار</div>
+                        <div class="kanban-list" id="list-idea"></div>
+                    </div>
+                    <div class="kanban-col" id="col-scripting">
+                        <div class="kanban-header">📝 كتابة/تجهيز</div>
+                        <div class="kanban-list" id="list-scripting"></div>
+                    </div>
+                    <div class="kanban-col" id="col-filming">
+                        <div class="kanban-header">🎬 تصوير</div>
+                        <div class="kanban-list" id="list-filming"></div>
+                    </div>
+                    <div class="kanban-col" id="col-editing">
+                        <div class="kanban-header">✂️ مونتاج</div>
+                        <div class="kanban-list" id="list-editing"></div>
+                    </div>
+                    <div class="kanban-col" id="col-done">
+                        <div class="kanban-header">✅ تم النشر</div>
+                        <div class="kanban-list" id="list-done"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="tab-planner" class="tab-pane" style="display:none;">
+            <div class="card">
+                <h2>الجدول الأسبوعي الثابت (Night Owl Mode)</h2>
+                <div style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; font-size: 0.9rem;">
+                    <p><strong style="color:var(--primary)">10:00 - 16:00</strong> : دوام العمل 💼</p>
+                    <p><strong style="color:var(--accent)">17:00 - 19:00</strong> : نافذة الصحة (رياضة/قيلولة) 🏋️‍♂️</p>
+                    <p><strong style="color:#fff">20:00 - 23:00</strong> : صناعة محتوى / مونتاج 🎨</p>
+                    <p><strong style="color:var(--gold)">23:00 - 03:00</strong> : الدراسة العميقة (Deep Work) 🧠</p>
+                    <p><strong style="color:var(--text-muted)">03:00 - 08:00</strong> : النوم الأساسي 😴</p>
+                </div>
+                <br>
+                <h3>المواعيد النهائية والامتحانات</h3>
+                <ul id="deadlines-list" style="list-style: none; margin-top: 10px;">
+                    <li style="padding: 10px; border-bottom: 1px solid #333; display:flex; justify-content:space-between;">
+                        <span>تسليم مشروع الويب</span>
+                        <span style="color:var(--danger)">بعد 5 أيام</span>
+                    </li>
+                </ul>
+                <button class="btn btn-sm" style="margin-top:10px" onclick="alert('خاصية إضافة المواعيد قادمة في التحديث القادم!')">+ موعد جديد</button>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<div id="notification-area"></div>
+
+<div id="input-modal" class="modal">
+    <div class="modal-content">
+        <h2 id="modal-title">إضافة جديد</h2>
+        <input type="text" id="modal-input" placeholder="اكتب هنا...">
+        <div style="display:flex; gap:10px; justify-content: flex-end; margin-top:15px;">
+            <button class="btn btn-danger" onclick="document.getElementById('input-modal').classList.remove('active')">إلغاء</button>
+            <button class="btn btn-primary" id="modal-save-btn">حفظ</button>
+        </div>
+    </div>
+</div>
+
+<script>
+/**
+ * NightOwl OS Core Logic
+ * Designed for High Performance & Gamification
+ */
+
+// --- STATE MANAGEMENT ---
+const State = {
+    user: {
+        level: 1,
+        xp: 0,
+        hp: 100,
+        gold: 0,
+        streak: 0
+    },
+    subjects: [
+        { id: 1, name: "رياضيات (Math)", chapters: , td: false },
+        { id: 2, name: "فيزياء (Physics)", chapters: , td: false },
+        { id: 3, name: "خوارزميات (Algo)", chapters: , td: false },
+        { id: 4, name: "قواعد بيانات (DB)", chapters: , td: false },
+        { id: 5, name: "برمجة ويب (Web)", chapters: , td: false },
+        { id: 6, name: "شبكات (Network)", chapters: , td: false },
+        { id: 7, name: "الإنجليزية (Eng)", chapters: , td: false }
+    ],
+    content: [
+        { id: 101, title: "فلوق الدراسة الليلي", type: "video", status: "editing" },
+        { id: 102, title: "نصيحة للمبرمجين", type: "reel", status: "idea" }
+    ],
+    habits: [
+        { id: 'h1', text: 'نوم قبل 3:30 ص', done: false, type: 'health' },
+        { id: 'h2', text: 'رياضة (17:00-19:00)', done: false, type: 'health' },
+        { id: 'h3', text: 'عدم استخدام الهاتف أول ساعة', done: false, type: 'focus' }
+    ],
+    
+    save: function() {
+        localStorage.setItem('nightowl_v1_data', JSON.stringify(this));
+    },
+    load: function() {
+        const stored = localStorage.getItem('nightowl_v1_data');
+        if (stored) {
+            const parsed = JSON.parse(stored);
+            this.user = parsed.user |
+
+| this.user;
+            this.subjects = parsed.subjects |
+
+| this.subjects;
+            this.content = parsed.content |
+
+| this.content;
+            // Habits reset daily logic needs to be separate, but simple load for now
+            // To be robust: Check date, if different day, reset habits.
+            const lastDate = localStorage.getItem('nightowl_last_date');
+            const today = new Date().toDateString();
+            if (lastDate!== today) {
+                this.habits.forEach(h => h.done = false);
+                localStorage.setItem('nightowl_last_date', today);
+            } else {
+                this.habits = parsed.habits |
+
+| this.habits;
+            }
+        }
+    }
+};
+
+// --- GAME ENGINE ---
+const Game = {
+    addXP: function(amount) {
+        State.user.xp += amount;
+        // Level Calc: Level * 100 XP needed for next
+        const needed = State.user.level * 100;
+        if (State.user.xp >= needed) {
+            State.user.xp -= needed;
+            State.user.level++;
+            UI.notify(`🎉 مبروك! وصلت للمستوى ${State.user.level}`, 'success');
+            Game.playSound('level');
+        }
+        State.save();
+        UI.renderHUD();
+    },
+    addGold: function(amount) {
+        State.user.gold += amount;
+        State.save();
+        UI.renderHUD();
+    },
+    damage: function(amount) {
+        State.user.hp = Math.max(0, State.user.hp - amount);
+        UI.notify(`⚠️ خسرت ${amount} HP`, 'danger');
+        if (State.user.hp === 0) alert("GAME OVER: العقوبة مفعلة (حرمان من الترفيه اليوم)");
+        State.save();
+        UI.renderHUD();
+    },
+    resetDay: function() {
+        if(confirm("هل تريد بدء يوم جديد؟ سيتم استعادة HP وتصفير العادات.")){
+            State.user.hp = 100;
+            State.habits.forEach(h => h.done = false);
+            State.save();
+            localStorage.setItem('nightowl_last_date', new Date().toDateString());
+            location.reload();
+        }
+    },
+    playSound: function(type) {
+        // Simple beep for feedback
+        const ctx = new (window.AudioContext |
+
+| window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        if (type === 'xp') {
+            osc.frequency.value = 800;
+            gain.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + 0.5);
+        } else if (type === 'level') {
+            osc.frequency.value = 600;
+            osc.type = 'square';
+            gain.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + 1);
+        }
+        osc.start();
+        osc.stop(ctx.currentTime + 0.5);
+    }
+};
+
+// --- STUDY MODULE ---
+const Study = {
+    toggleChapter: function(subId, chapIndex) {
+        const sub = State.subjects.find(s => s.id === subId);
+        const isDone = sub.chapters[chapIndex] === 1;
+        
+        if (!isDone) {
+            sub.chapters[chapIndex] = 1;
+            Game.addXP(50); // 50 XP per chapter
+            Game.addGold(10);
+            UI.notify(`تم إنجاز فصل في ${sub.name}! (+50 XP)`);
+        } else {
+            sub.chapters[chapIndex] = 0;
+            Game.addXP(-50); // Remove XP if unchecked
+        }
+        State.save();
+        UI.renderStudy();
+    },
+    toggleTD: function(subId) {
+        const sub = State.subjects.find(s => s.id === subId);
+        sub.td =!sub.td;
+        if (sub.td) {
+            Game.addXP(100); // Big reward for TD
+            UI.notify(`تم إنهاء TD/TP لـ ${sub.name}! (+100 XP)`);
+        }
+        State.save();
+        UI.renderStudy();
+    },
+    addSubjectPrompt: function() {
+        UI.showModal("اسم المادة الجديدة:", (val) => {
+            State.subjects.push({
+                id: Date.now(),
+                name: val,
+                chapters: ,
+                td: false
+            });
+            State.save();
+            UI.renderStudy();
+        });
+    }
+};
+
+// --- CONTENT MODULE ---
+const Content = {
+    addIdeaPrompt: function() {
+        UI.showModal("عنوان الفكرة:", (val) => {
+            State.content.push({
+                id: Date.now(),
+                title: val,
+                type: 'reel',
+                status: 'idea'
+            });
+            State.save();
+            UI.renderContent();
+        });
+    },
+    moveStatus: function(id, direction) {
+        const item = State.content.find(i => i.id === id);
+        const statuses = ['idea', 'scripting', 'filming', 'editing', 'done'];
+        let idx = statuses.indexOf(item.status);
+        
+        if (direction === 'next' && idx < 4) {
+            item.status = statuses[idx+1];
+            Game.addXP(20);
+            if(item.status === 'done') {
+                Game.addXP(200); // Big reward for publishing
+                Game.addGold(100);
+                UI.notify('تم النشر! عمل ممتاز 🚀');
+            }
+        }
+        State.save();
+        UI.renderContent();
+    },
+    delete: function(id) {
+        if(confirm("حذف هذا العنصر؟")) {
+            State.content = State.content.filter(i => i.id!== id);
+            State.save();
+            UI.renderContent();
+        }
+    }
+};
+
+// --- HABITS MODULE ---
+const Habits = {
+    toggle: function(id) {
+        const h = State.habits.find(x => x.id === id);
+        h.done =!h.done;
+        if(h.done) {
+            Game.addXP(30);
+            Game.addGold(5);
+            UI.notify('عادة جيدة! (+30 XP)');
+        }
+        State.save();
+        UI.renderHabits();
+    }
+};
+
+// --- TIMER MODULE (Pomodoro) ---
+const Timer = {
+    interval: null,
+    timeLeft: 25 * 60,
+    isRunning: false,
+    
+    toggle: function() {
+        if (this.isRunning) {
+            clearInterval(this.interval);
+            this.isRunning = false;
+        } else {
+            this.interval = setInterval(() => {
+                this.timeLeft--;
+                this.updateDisplay();
+                if(this.timeLeft <= 0) this.complete();
+            }, 1000);
+            this.isRunning = true;
+        }
+    },
+    updateDisplay: function() {
+        const m = Math.floor(this.timeLeft / 60).toString().padStart(2, '0');
+        const s = (this.timeLeft % 60).toString().padStart(2, '0');
+        document.getElementById('timer-display').innerText = `${m}:${s}`;
+    },
+    complete: function() {
+        clearInterval(this.interval);
+        this.isRunning = false;
+        this.timeLeft = 25 * 60;
+        this.updateDisplay();
+        Game.addXP(100);
+        UI.notify("انتهت الجلسة! خذ استراحة (+100 XP)", 'success');
+        Game.playSound('level');
+    }
+};
+
+// --- UI & RENDERERS ---
+const UI = {
+    init: function() {
+        State.load();
+        this.renderHUD();
+        this.renderStudy();
+        this.renderContent();
+        this.renderHabits();
+    },
+    
+    switchTab: function(tabName) {
+        document.querySelectorAll('.tab-pane').forEach(el => el.style.display = 'none');
+        document.getElementById(`tab-${tabName}`).style.display = 'block';
+        document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
+        event.target.classList.add('active');
+    },
+
+    renderHUD: function() {
+        document.getElementById('level-val').innerText = State.user.level;
+        document.getElementById('hp-val').innerText = State.user.hp;
+        document.getElementById('gold-val').innerText = State.user.gold;
+        
+        const nextLevelXP = State.user.level * 100;
+        const pct = (State.user.xp / nextLevelXP) * 100;
+        document.getElementById('xp-bar').style.width = `${pct}%`;
+        document.getElementById('xp-text').innerText = `${State.user.xp} / ${nextLevelXP}`;
+    },
+
+    renderHabits: function() {
+        const container = document.getElementById('daily-habits-list');
+        container.innerHTML = '';
+        State.habits.forEach(h => {
+            const div = document.createElement('div');
+            div.className = 'habit-row';
+            div.innerHTML = `
+                <span>${h.text}</span>
+                <div class="checkbox-custom ${h.done? 'checked' : ''}" onclick="Habits.toggle('${h.id}')"></div>
+            `;
+            container.appendChild(div);
+        });
+    },
+
+    renderStudy: function() {
+        const container = document.getElementById('subjects-container');
+        container.innerHTML = '';
+        State.subjects.forEach(sub => {
+            let dotsHTML = '';
+            for(let i=0; i<6; i++) {
+                dotsHTML += `<div class="chapter-dot ${sub.chapters[i]? 'done' : ''}" onclick="Study.toggleChapter(${sub.id}, ${i})">${i+1}</div>`;
+            }
+            
+            const progress = (sub.chapters.filter(x => x===1).length / 6) * 100;
+            
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.innerHTML = `
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <strong>${sub.name}</strong>
+                    <span style="font-size:0.8rem; color:${progress === 100? 'var(--accent)' : 'gray'}">${Math.round(progress)}%</span>
+                </div>
+                <div class="xp-bar-container" style="height:4px; margin: 10px 0;"><div class="xp-bar-fill" style="width:${progress}%; background:var(--accent)"></div></div>
+                <div style="font-size:0.8rem; margin-bottom:5px;">الفصول:</div>
+                <div class="chapter-circles">${dotsHTML}</div>
+                <div style="margin-top:15px; border-top:1px solid #333; padding-top:10px; display:flex; justify-content:space-between; align-items:center;">
+                    <span style="font-size:0.8rem;">TD/TP</span>
+                    <div class="checkbox-custom ${sub.td? 'checked' : ''}" style="width:20px; height:20px;" onclick="Study.toggleTD(${sub.id})"></div>
+                </div>
+            `;
+            container.appendChild(card);
+        });
+    },
+
+    renderContent: function() {
+        const statuses = ['idea', 'scripting', 'filming', 'editing', 'done'];
+        statuses.forEach(status => {
+            document.getElementById(`list-${status}`).innerHTML = '';
+        });
+
+        State.content.forEach(item => {
+            const el = document.createElement('div');
+            el.className = 'content-card';
+            // Enable dragging logic here if desired, using click to move for simplicity
+            el.innerHTML = `
+                <div>${item.title} <span style="font-size:0.7rem; background:#333; padding:2px 4px; border-radius:4px;">${item.type}</span></div>
+                <div class="delete-btn" onclick="Content.delete(${item.id})">🗑️</div>
+                <div style="margin-top:8px; display:flex; justify-content:flex-end;">
+                    ${item.status!== 'done'? `<button class="btn btn-sm" style="font-size:0.7rem; padding:2px 6px;" onclick="Content.moveStatus(${item.id}, 'next')">→</button>` : '✅'}
+                </div>
+            `;
+            document.getElementById(`list-${item.status}`).appendChild(el);
+        });
+    },
+
+    notify: function(msg, type='info') {
+        const area = document.getElementById('notification-area');
+        const toast = document.createElement('div');
+        toast.className = 'toast';
+        toast.style.borderRightColor = type === 'danger'? 'var(--danger)' : (type === 'success'? 'var(--accent)' : 'var(--primary)');
+        toast.innerText = msg;
+        area.appendChild(toast);
+        setTimeout(() => toast.remove(), 3000);
+    },
+
+    showModal: function(title, callback) {
+        const modal = document.getElementById('input-modal');
+        document.getElementById('modal-title').innerText = title;
+        const input = document.getElementById('modal-input');
+        input.value = '';
+        modal.classList.add('active');
+        input.focus();
+        
+        const saveBtn = document.getElementById('modal-save-btn');
+        // Clean previous listeners to avoid duplicates
+        const newBtn = saveBtn.cloneNode(true);
+        saveBtn.parentNode.replaceChild(newBtn, saveBtn);
+        
+        newBtn.addEventListener('click', () => {
+            if(input.value.trim()) {
+                callback(input.value);
+                modal.classList.remove('active');
+            }
+        });
+    }
+};
+
+// Start the App
+UI.init();
+
+</script>
+</body>
 </html>
